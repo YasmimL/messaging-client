@@ -8,14 +8,17 @@ import com.github.javafaker.Faker;
 
 import javax.swing.*;
 
+import static java.lang.Runtime.getRuntime;
+
 public class Main {
     public static void main(String[] args) {
         final var socketClient = SocketClient.getInstance();
-//        socketClient.setListener(view);
         socketClient.start();
 
         final var username = generateUsername();
         socketClient.send(new Message<>(MessageType.SUBSCRIBE, username));
+
+        getRuntime().addShutdownHook(new Thread(() -> SocketClient.getInstance().close()));
 
         SwingUtilities.invokeLater(() -> {
             try {

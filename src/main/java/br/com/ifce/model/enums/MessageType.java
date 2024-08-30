@@ -8,5 +8,6 @@ public enum MessageType {
     GET_USERS_RESPONSE,
     CHAT_REQUEST,
     CHAT_RESPONSE,
-    USER_LEFT
+    USER_LEFT,
+    CLOSE
 }

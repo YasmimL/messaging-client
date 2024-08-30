@@ -30,7 +30,6 @@ public class SocketClient {
     public void start() {
         try {
             this.socket = new Socket(SERVER_ADDRESS, SERVER_PORT);
-//            this.send(new Message<>(MessageType.SUBSCRIBE, null));
             this.listenForServerMessages();
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -44,11 +43,16 @@ public class SocketClient {
                     var inputStream = new ObjectInputStream(this.socket.getInputStream());
                     this.listener.onMessage((Message<?>) inputStream.readObject());
                 } catch (Exception e) {
-//                    this.close();
+                    this.close();
                     throw new RuntimeException(e);
                 }
             }
         }).start();
+    }
+
+    public void close() {
+        this.interrupted = true;
+        this.send(MessageType.CLOSE);
     }
 
     public void send(MessageType messageType) {

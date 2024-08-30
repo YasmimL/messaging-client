@@ -21,10 +21,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static br.com.ifce.util.ListUtil.castList;
+
 public class MainView implements MessageListener {
     private final JFrame frame = new JFrame("Messaging Server");
 
     private final DefaultListModel<String> contactListModel;
+
     private JList<String> contactList;
 
     private JPanel messagesPanel;
@@ -33,20 +36,20 @@ public class MainView implements MessageListener {
 
     private String selectedContact;
 
-    private final java.util.List<String> contacts;
-
     private final Map<String, List<ChatMessage>> messages;
 
     public MainView(String username) {
         this.username = username;
-        this.contacts = new ArrayList<>();
         this.messages = new HashMap<>();
         this.contactListModel = new DefaultListModel<>();
     }
 
     private void onSelectContact() {
         this.selectedContact = this.contactList.getSelectedValue();
-        // TODO: buscar mensagens deste contato
+        this.clearChatPanel();
+        if (this.messages.containsKey(this.selectedContact)) {
+            this.messages.get(this.selectedContact).forEach(this::addChatMessage);
+        }
     }
 
     public void show() throws UnsupportedLookAndFeelException, ClassNotFoundException, InstantiationException, IllegalAccessException {
@@ -92,7 +95,6 @@ public class MainView implements MessageListener {
 
             final var messageType = isOnline ? MessageType.GO_ONLINE : MessageType.GO_OFFLINE;
             SocketClient.getInstance().send(messageType);
-            // TODO: carregar mensagens do servidor offline
         });
 
         return toggleButton;
@@ -127,11 +129,6 @@ public class MainView implements MessageListener {
         StyleConstants.setAlignment(center, StyleConstants.ALIGN_CENTER);
         doc.setParagraphAttributes(0, doc.getLength(), center, false);
         contactsPanel.add(header, BorderLayout.NORTH);
-
-        // TODO: REMOVE!!!
-//        for (int i = 1; i < 6; i++) {
-//            this.contactListModel.addElement("Contact " + i);
-//        }
 
         this.contactList = new JList<>(this.contactListModel);
         this.contactList.setSelectionMode(0);
@@ -186,39 +183,25 @@ public class MainView implements MessageListener {
 
         var selectedContacts = contactsList.getSelectedValuesList().stream().map(value -> (String) value).toList();
         this.contactListModel.addAll(selectedContacts);
+        selectedContacts.forEach(contact -> this.messages.put(contact, new ArrayList<>()));
     }
 
     private JButton renderRemoveContactButton() {
         JButton button = new JButton("Remove Contact");
         button.addActionListener(e -> {
-//            if (this.contactList.getSelectedValuesList().isEmpty()) return;
-//            this.contactList.getSelectedValuesList().forEach(this.contactListModel::removeElement);
             if (this.contactList.getSelectedValue() == null) return;
-            this.contactListModel.removeElement(this.contactList.getSelectedValue());
-            this.selectedContact = null;
-            this.messagesPanel.removeAll();
-            this.messagesPanel.repaint();
+            this.removeContact(this.contactList.getSelectedValue());
         });
 
         return button;
     }
 
-//    private void showRemoveContactsDialog() {
-//        var topicsList = new JList<>(List.of("Test 1", "Test 2", "Test 3").toArray());
-//        topicsList.setVisibleRowCount(5);
-//        topicsList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
-//        var topicsField = new JScrollPane(topicsList);
-//        var fields = new Object[]{
-//            "Select Topics", topicsField,
-//        };
-//
-//        var option = JOptionPane.showConfirmDialog(frame, fields, "Remove Contacts", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-//
-//        if (option != JOptionPane.OK_OPTION) return;
-//
-//        var selectedTopics = topicsList.getSelectedValuesList();
-////            handleCreateClient(selectedTopics);
-//    }
+    private void removeContact(String contact) {
+        this.messages.remove(contact);
+        this.contactListModel.removeElement(contact);
+        this.selectedContact = null;
+        this.clearChatPanel();
+    }
 
     public JPanel renderChatPanel() {
         final int width = 350;
@@ -241,12 +224,7 @@ public class MainView implements MessageListener {
 
         this.messagesPanel = new JPanel();
         this.messagesPanel.setLayout(new GridBagLayout());
-        GridBagConstraints constraints = new GridBagConstraints();
-        constraints.gridwidth = GridBagConstraints.REMAINDER;
-        constraints.fill = GridBagConstraints.HORIZONTAL;
-        constraints.anchor = GridBagConstraints.SOUTH;
-        constraints.weighty = Integer.MAX_VALUE;
-        this.messagesPanel.add(new Label(), constraints);
+        this.clearChatPanel();
 
         JScrollPane scrollPane = new JScrollPane(this.messagesPanel);
         scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
@@ -287,18 +265,18 @@ public class MainView implements MessageListener {
 
         chatPanel.add(formPanel, BorderLayout.SOUTH);
 
-//        JPanel container = new JPanel(new FlowLayout(FlowLayout.CENTER));
-//        container.setBorder(new EmptyBorder(0, 0, 20, 0));
-//        container.add(chatPanel);
-
-        // TODO: REMOVE!!!
-//        this.addChatMessage(new ChatMessage("a", "b", "test...", LocalTime.now()));
-//        this.addChatMessage(new ChatMessage("a", "b", "test...", LocalTime.now()));
-//        this.addChatMessage(new ChatMessage("a", "b", "test...", LocalTime.now()));
-//        this.addChatMessage(new ChatMessage("a", "b", "test...", LocalTime.now()));
-//        this.addChatMessage(new ChatMessage("a", "b", "test...", LocalTime.now()));
-
         return chatPanel;
+    }
+
+    private void clearChatPanel() {
+        this.messagesPanel.removeAll();
+        GridBagConstraints constraints = new GridBagConstraints();
+        constraints.gridwidth = GridBagConstraints.REMAINDER;
+        constraints.fill = GridBagConstraints.HORIZONTAL;
+        constraints.anchor = GridBagConstraints.SOUTH;
+        constraints.weighty = Integer.MAX_VALUE;
+        this.messagesPanel.add(new Label(), constraints);
+        this.messagesPanel.repaint();
     }
 
     public void addChatMessage(ChatMessage message) {
@@ -313,7 +291,7 @@ public class MainView implements MessageListener {
         sender.setBackground(Color.BLACK);
         sender.setFont(new Font(Font.MONOSPACED, Font.BOLD, 12));
         sender.setOpaque(false);
-        sender.setText(message.from());
+        sender.setText(this.username.equals(message.from()) ? "You" : message.from());
         header.add(sender, BorderLayout.WEST);
 
         JTextPane time = new JTextPane();
@@ -347,17 +325,27 @@ public class MainView implements MessageListener {
     @Override
     public void onMessage(Message<?> message) {
         switch (message.getType()) {
-            case GET_USERS_RESPONSE -> this.showAddContactsDialog((List<String>) message.getPayload());
+            case GET_USERS_RESPONSE -> this.showAddContactsDialog(castList((List<?>) message.getPayload()));
             case CHAT_RESPONSE -> this.handleChatMessage((ChatMessage) message.getPayload());
+            case USER_LEFT -> this.handleUserLeave((String) message.getPayload());
+        }
+    }
+
+    private void handleUserLeave(String userWhoLeft) {
+        if (this.contactListModel.contains(userWhoLeft)) {
+            this.removeContact(userWhoLeft);
         }
     }
 
     private void handleChatMessage(ChatMessage message) {
-        if (this.username.equals(message.to())) {
-            if (!this.contactListModel.contains(message.from())) this.contactListModel.addElement(message.from());
-            this.contactList.setSelectedValue(message.from(), true);
-            this.selectedContact = message.from();
-        }
+        final var contact = this.username.equals(message.to()) ? message.from() : message.to();
+
+        if (!this.contactListModel.contains(contact)) this.contactListModel.addElement(contact);
+        this.contactList.setSelectedValue(contact, true);
+        this.selectedContact = contact;
+
+        if (!this.messages.containsKey(contact)) this.messages.put(contact, new ArrayList<>());
+        this.messages.get(contact).add(message);
 
         this.addChatMessage(message);
     }
