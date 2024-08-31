@@ -4,6 +4,7 @@ import br.com.ifce.model.ChatMessage;
 import br.com.ifce.model.Message;
 import br.com.ifce.model.enums.MessageType;
 import br.com.ifce.network.MessageListener;
+import br.com.ifce.network.rmi.OfflineMessagingServiceProvider;
 import br.com.ifce.network.socket.SocketClient;
 import br.com.ifce.view.extensions.JPlaceholderTextField;
 
@@ -67,8 +68,6 @@ public class MainView implements MessageListener {
         this.renderHeadingPanel();
         this.renderMainPanel();
 
-        // TODO: carregar mensagens do servidor offline
-
         this.frame.setVisible(true);
     }
 
@@ -95,9 +94,27 @@ public class MainView implements MessageListener {
 
             final var messageType = isOnline ? MessageType.GO_ONLINE : MessageType.GO_OFFLINE;
             SocketClient.getInstance().send(messageType);
+
+            if (isOnline) this.readOfflineMessages();
         });
 
         return toggleButton;
+    }
+
+    private void readOfflineMessages() {
+        final var messages = OfflineMessagingServiceProvider.provide().readAll(this.username);
+        if (!messages.isEmpty()) {
+            messages.forEach(message -> {
+                final var sender = message.from();
+                if (!this.messages.containsKey(sender)) this.messages.put(sender, new ArrayList<>());
+                this.messages.get(sender).add(message);
+            });
+
+            final var latestMessage = messages.get(messages.size() - 1);
+            this.clearChatPanel();
+            this.selectedContact = latestMessage.from();
+            this.messages.get(latestMessage.from()).forEach(this::addChatMessage);
+        }
     }
 
     private void renderMainPanel() {

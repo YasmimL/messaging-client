@@ -2,6 +2,7 @@ package br.com.ifce;
 
 import br.com.ifce.model.Message;
 import br.com.ifce.model.enums.MessageType;
+import br.com.ifce.network.rmi.OfflineMessagingServiceProvider;
 import br.com.ifce.network.socket.SocketClient;
 import br.com.ifce.view.MainView;
 import com.github.javafaker.Faker;
@@ -12,6 +13,8 @@ import static java.lang.Runtime.getRuntime;
 
 public class Main {
     public static void main(String[] args) {
+        OfflineMessagingServiceProvider.lookup();
+
         final var socketClient = SocketClient.getInstance();
         socketClient.start();
 
