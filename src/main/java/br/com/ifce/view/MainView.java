@@ -106,14 +106,14 @@ public class MainView implements MessageListener {
         if (!messages.isEmpty()) {
             messages.forEach(message -> {
                 final var sender = message.from();
+                if (!this.contactListModel.contains(sender)) this.contactListModel.addElement(sender);
                 if (!this.messages.containsKey(sender)) this.messages.put(sender, new ArrayList<>());
                 this.messages.get(sender).add(message);
             });
 
             final var latestMessage = messages.get(messages.size() - 1);
-            this.clearChatPanel();
-            this.selectedContact = latestMessage.from();
-            this.messages.get(latestMessage.from()).forEach(this::addChatMessage);
+            this.contactList.setSelectedValue(latestMessage.from(), true);
+            this.onSelectContact();
         }
     }
 
